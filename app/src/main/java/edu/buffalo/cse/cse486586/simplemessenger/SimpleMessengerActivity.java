@@ -1,12 +1,15 @@
 package edu.buffalo.cse.cse486586.simplemessenger;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
-
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import edu.buffalo.cse.cse486586.simplemessenger.R;
 
 import android.app.Activity;
@@ -44,18 +47,18 @@ public class SimpleMessengerActivity extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
+
         /*
          * Allow this Activity to use a layout file that defines what UI elements to use.
          * Please take a look at res/layout/main.xml to see how the UI elements are defined.
-         * 
+         *
          * R is an automatically generated class that contains pointers to statically declared
          * "resources" such as UI elements and strings. For example, R.layout.main refers to the
          * entire UI screen declared in res/layout/main.xml file. You can find other examples of R
          * class variables below.
          */
         setContentView(R.layout.main);
-        
+
         /*
          * Calculate the port number that this AVD listens on.
          * It is just a hack that I came up with to get around the networking limitations of AVDs.
@@ -69,7 +72,7 @@ public class SimpleMessengerActivity extends Activity {
             /*
              * Create a server socket as well as a thread (AsyncTask) that listens on the server
              * port.
-             * 
+             *
              * AsyncTask is a simplified thread construct that Android provides. Please make sure
              * you know how it works by reading
              * http://developer.android.com/reference/android/os/AsyncTask.html
@@ -80,7 +83,7 @@ public class SimpleMessengerActivity extends Activity {
             /*
              * Log is a good way to debug your code. LogCat prints out all the messages that
              * Log class writes.
-             * 
+             *
              * Please read http://developer.android.com/tools/debugging/debugging-projects.html
              * and http://developer.android.com/tools/debugging/debugging-log.html
              * for more information on debugging.
@@ -92,13 +95,13 @@ public class SimpleMessengerActivity extends Activity {
         /*
          * Retrieve a pointer to the input box (EditText) defined in the layout
          * XML file (res/layout/main.xml).
-         * 
+         *
          * This is another example of R class variables. R.id.edit_text refers to the EditText UI
          * element declared in res/layout/main.xml. The id of "edit_text" is given in that file by
          * the use of "android:id="@+id/edit_text""
          */
         final EditText editText = (EditText) findViewById(R.id.edit_text);
-        
+
         /*
          * Register an OnKeyListener for the input box. OnKeyListener is an event handler that
          * processes each key event. The purpose of the following code is to detect an enter key
@@ -139,10 +142,10 @@ public class SimpleMessengerActivity extends Activity {
     /***
      * ServerTask is an AsyncTask that should handle incoming messages. It is created by
      * ServerTask.executeOnExecutor() call in SimpleMessengerActivity.
-     * 
+     *
      * Please make sure you understand how AsyncTask works by reading
      * http://developer.android.com/reference/android/os/AsyncTask.html
-     * 
+     *
      * @author stevko
      *
      */
@@ -151,11 +154,20 @@ public class SimpleMessengerActivity extends Activity {
         @Override
         protected Void doInBackground(ServerSocket... sockets) {
             ServerSocket serverSocket = sockets[0];
-            
-            /*
-             * TODO: Fill in your server code that receives messages and passes them
-             * to onProgressUpdate().
-             */
+            DataInputStream dis = null;
+            Socket acc = null;
+            try {
+                acc = serverSocket.accept();
+                dis = new DataInputStream(acc.getInputStream());
+                while(true) {
+                    String s = dis.readUTF();
+                    publishProgress(s);
+                }
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
             return null;
         }
 
@@ -168,14 +180,14 @@ public class SimpleMessengerActivity extends Activity {
             remoteTextView.append(strReceived + "\t\n");
             TextView localTextView = (TextView) findViewById(R.id.local_text_display);
             localTextView.append("\n");
-            
+
             /*
              * The following code creates a file in the AVD's internal storage and stores a file.
-             * 
+             *
              * For more information on file I/O on Android, please take a look at
              * http://developer.android.com/training/basics/data-storage/files.html
              */
-            
+
             String filename = "SimpleMessengerOutput";
             String string = strReceived + "\n";
             FileOutputStream outputStream;
@@ -196,7 +208,7 @@ public class SimpleMessengerActivity extends Activity {
      * ClientTask is an AsyncTask that should send a string over the network.
      * It is created by ClientTask.executeOnExecutor() call whenever OnKeyListener.onKey() detects
      * an enter key press event.
-     * 
+     *
      * @author stevko
      *
      */
@@ -211,11 +223,12 @@ public class SimpleMessengerActivity extends Activity {
 
                 Socket socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}),
                         Integer.parseInt(remotePort));
-                
+
                 String msgToSend = msgs[0];
-                /*
-                 * TODO: Fill in your client code that sends out a message.
-                 */
+
+                DataOutputStream dos = null;
+                dos = new DataOutputStream(socket.getOutputStream());
+                dos.writeUTF(msgToSend);
                 socket.close();
             } catch (UnknownHostException e) {
                 Log.e(TAG, "ClientTask UnknownHostException");
